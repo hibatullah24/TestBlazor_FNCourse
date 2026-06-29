@@ -6,7 +6,6 @@
 @inject ISnackbar Snackbar
 @rendermode InteractiveServer
 
-
 <PageTitle>Checkout — ShopBlazor</PageTitle>
 
 <MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
@@ -24,7 +23,6 @@
 }
 else if (_orderPlaced)
 {
-    @* Success screen *@
     <div style="text-align:center; margin-top:3rem">
         <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
                  Style="font-size:80px; color:#4caf50" />
@@ -71,7 +69,6 @@ else if (_orderPlaced)
 else
 {
     <MudGrid>
-        @* Order items review *@
         <MudItem xs="12" md="7">
             <MudText Typo="Typo.h6" Style="color:#5c3d2e; font-weight:600; margin-bottom:1rem">
                 Review your order
@@ -98,7 +95,6 @@ else
             }
         </MudItem>
 
-        @* Place order panel *@
         <MudItem xs="12" md="5">
             <MudPaper Elevation="3" Style="padding:1.5rem; border-radius:16px">
                 <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
@@ -115,7 +111,7 @@ else
                 <MudButton FullWidth="true"
                            Variant="Variant.Filled"
                            Style="background:#8b5e3c; color:white; border-radius:10px;
-                    text-transform:none; padding:12px; font-size:15px"
+                                  text-transform:none; padding:12px; font-size:15px"
                            Disabled="_loading"
                            OnClick="PlaceOrder">
                     @if (_loading)
@@ -148,7 +144,9 @@ else
     OrderConfirmationDto? _confirmation;
 
     async Task PlaceOrder()
+
     {
+
         if (!Auth.IsLoggedIn)
         {
             Nav.NavigateTo("/login");
@@ -190,6 +188,7 @@ else
 
                 Cart.Clear();
                 _orderPlaced = true;
+                Snackbar.Add($"🎉 Order #{_confirmation.OrderId} placed successfully!", Severity.Success);
             }
             else
             {
@@ -198,7 +197,7 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add(ex.Message, Severity.Error);
+            Snackbar.Add($"Something went wrong: {ex.Message}", Severity.Error);
         }
         finally
         {

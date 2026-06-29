@@ -117,6 +117,9 @@
             });
 
             Auth.Login(result.UserId, result.Role, result.UserName);
+
+            Console.WriteLine($"After login: UserId={Auth.UserId}, Role={Auth.Role}");
+            Snackbar.Add($"Logged in as UserId={Auth.UserId}", Severity.Info);
             Snackbar.Add($"Welcome back, {result.UserName}!", Severity.Success);
             Nav.NavigateTo(result.Role == "Admin" ? "/admin/dashboard" : "/catalog");
         }

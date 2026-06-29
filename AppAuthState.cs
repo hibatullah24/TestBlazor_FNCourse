@@ -7,16 +7,21 @@ namespace TestBlazor_FNCourse.Services
     {
         private ClaimsPrincipal _current = new ClaimsPrincipal(new ClaimsIdentity());
 
-        public int UserId { get; private set; }
-        public string Role { get; private set; } = "";
-        public string UserName { get; private set; } = "";
-        public bool IsLoggedIn => UserId > 0;
+        // Static so it survives circuit resets
+        private static int _userId;
+        private static string _role = "";
+        private static string _userName = "";
+
+        public int UserId => _userId;
+        public string Role => _role;
+        public string UserName => _userName;
+        public bool IsLoggedIn => _userId > 0;
 
         public void Login(int userId, string role, string name)
         {
-            UserId = userId;
-            Role = role;
-            UserName = name;
+            _userId = userId;
+            _role = role;
+            _userName = name;
 
             var identity = new ClaimsIdentity(new[]
             {
@@ -31,9 +36,9 @@ namespace TestBlazor_FNCourse.Services
 
         public void Logout()
         {
-            UserId = 0;
-            Role = "";
-            UserName = "";
+            _userId = 0;
+            _role = "";
+            _userName = "";
             _current = new ClaimsPrincipal(new ClaimsIdentity());
             NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
         }

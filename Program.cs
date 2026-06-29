@@ -25,9 +25,11 @@ builder.Services.AddMudServices();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+
+
 builder.Services.AddCors();
 
-builder.Services.AddScoped<AppAuthState>();
+builder.Services.AddSingleton<AppAuthState>();
 builder.Services.AddScoped<AuthenticationStateProvider>(
     sp => sp.GetRequiredService<AppAuthState>());
 builder.Services.AddAuthenticationCore();

@@ -119,7 +119,7 @@ namespace TestBlazor_FNCourse.Services
                 return new LoginResult
                 {
                     message = $"Welocome, {user.UName}",
-                    userId = user.UId,
+                    UserId = user.UId,
                     Role = user.Role,
                     UserName = user.UName
 
