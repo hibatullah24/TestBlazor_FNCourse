@@ -1,0 +1,129 @@
+﻿@page "/orders"
+@layout Layout.UserLayout
+@inject OrderService OrderService
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+
+<PageTitle>My Orders — ShopBlazor</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    My Orders
+</MudText>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large"/>
+    </div>
+}
+else if (!_orders.Any())
+{
+    <div style="text-align:center; margin-top:5rem">
+        <MudIcon Icon="@Icons.Material.Filled.Receipt"
+                 Style="font-size:80px; color:#e8c9a0"/>
+        <MudText Typo="Typo.h6" Style="color:#8b5e3c; margin-top:1rem">
+            No orders yet
+        </MudText>
+        <MudButton Variant="Variant.Filled"
+                   Style="background:#8b5e3c; color:white; margin-top:1rem;
+                          border-radius:10px; text-transform:none"
+                   OnClick='() => Nav.NavigateTo("/catalog")'>
+            Start shopping
+        </MudButton>
+    </div>
+}
+else
+{
+    @foreach (var order in _orders)
+    {
+        <MudPaper Elevation="2" Class="mb-4"
+                  Style="padding:1.5rem; border-radius:14px; cursor:pointer"
+                  @onclick="() => ToggleOrder(order.OrderId)">
+
+            <div style="display:flex; justify-content:space-between; align-items:center">
+                <div>
+                    <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e">
+                        Order #@order.OrderId
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color:#a07850">
+                        @order.OrderDate.ToString("MMMM dd, yyyy — hh:mm tt")
+                    </MudText>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:1rem">
+                    <MudText Style="font-weight:700; font-size:18px; color:#8b5e3c">
+                        $@order.TotalAmount.ToString("0.00")
+                    </MudText>
+                    <MudIconButton Icon="@(_expandedOrders.Contains(order.OrderId)
+                                          ? Icons.Material.Filled.ExpandLess
+                                          : Icons.Material.Filled.ExpandMore)"
+                                   Style="color:#8b5e3c"/>
+                </div>
+            </div>
+
+            @* Expanded items *@
+            @if (_expandedOrders.Contains(order.OrderId))
+            {
+                <MudDivider Class="my-3"/>
+                @foreach (var item in order.Items)
+                {
+                    <div style="display:flex; justify-content:space-between;
+                                padding:6px 0; border-bottom:1px solid #f0e6da">
+                        <div>
+                            <MudText Typo="Typo.body2" Style="color:#5c3d2e; font-weight:500">
+                                @item.ProductName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color:#a07850">
+                                @item.Quantity × $@item.UnitPrice.ToString("0.00")
+                            </MudText>
+                        </div>
+                        <MudText Typo="Typo.body2" Style="color:#8b5e3c; font-weight:600">
+                            $@item.Subtotal.ToString("0.00")
+                        </MudText>
+                    </div>
+                }
+
+                <div style="display:flex; justify-content:flex-end; margin-top:12px">
+                    <MudButton Variant="Variant.Outlined"
+                                Style="border-color:#8b5e3c; color:#8b5e3c;
+                                    border-radius:8px; text-transform:none"
+                                StartIcon="@Icons.Material.Filled.RateReview"
+                                OnClick='@(() => Nav.NavigateTo($"/review/{order.Items.First().ProductId}"))'>
+                        Write a review
+                    </MudButton>
+                </div>
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    List<UserOrderDto> _orders = new();
+    HashSet<int> _expandedOrders = new();
+    bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var result = OrderService.GetUserOrders(Auth.UserId);
+        if (result.Success)
+            _orders = result.Data;
+        else
+            _orders = new();
+
+        _loading = false;
+    }
+
+    void ToggleOrder(int orderId)
+    {
+        if (_expandedOrders.Contains(orderId))
+            _expandedOrders.Remove(orderId);
+        else
+            _expandedOrders.Add(orderId);
+    }
+}

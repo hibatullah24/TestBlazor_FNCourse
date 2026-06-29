@@ -1,0 +1,208 @@
+﻿@page "/checkout"
+@layout Layout.UserLayout
+@inject OrderService OrderService
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+
+<PageTitle>Checkout — ShopBlazor</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    Checkout
+</MudText>
+
+@if (!Cart.Any())
+{
+    <MudAlert Severity="Severity.Warning" Style="background:#fdf6f0">
+        Your cart is empty.
+        <MudLink Href="/catalog" Style="color:#8b5e3c; font-weight:600; margin-left:8px">
+            Browse products
+        </MudLink>
+    </MudAlert>
+}
+else if (_orderPlaced)
+{
+    @* Success screen *@
+    <div style="text-align:center; margin-top:3rem">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                 Style="font-size:80px; color:#4caf50" />
+        <MudText Typo="Typo.h5" Style="color:#5c3d2e; margin-top:1rem; font-weight:600">
+            Order placed successfully!
+        </MudText>
+        <MudText Typo="Typo.body1" Style="color:#a07850; margin-top:8px">
+            Order #@_confirmation!.OrderId — Total $@_confirmation.TotalAmount.ToString("0.00")
+        </MudText>
+
+        <MudPaper Elevation="2" Style="max-width:500px; margin:2rem auto; padding:1.5rem; border-radius:12px">
+            @foreach (var item in _confirmation.Items)
+            {
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+                    <MudText Typo="Typo.body2">@item.ProductName × @item.Quantity</MudText>
+                    <MudText Typo="Typo.body2" Style="color:#8b5e3c">
+                        $@item.Subtotal.ToString("0.00")
+                    </MudText>
+                </div>
+            }
+            <MudDivider Class="my-2" />
+            <div style="display:flex; justify-content:space-between">
+                <MudText Style="font-weight:700">Total</MudText>
+                <MudText Style="font-weight:700; color:#8b5e3c">
+                    $@_confirmation.TotalAmount.ToString("0.00")
+                </MudText>
+            </div>
+        </MudPaper>
+
+        <div style="display:flex; gap:1rem; justify-content:center">
+            <MudButton Variant="Variant.Filled"
+                       Style="background:#8b5e3c; color:white; border-radius:10px; text-transform:none"
+                       OnClick='() => Nav.NavigateTo("/orders")'>
+                View my orders
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Style="border-color:#8b5e3c; color:#8b5e3c; border-radius:10px; text-transform:none"
+                       OnClick='() => Nav.NavigateTo("/catalog")'>
+                Continue shopping
+            </MudButton>
+        </div>
+    </div>
+}
+else
+{
+    <MudGrid>
+        @* Order items review *@
+        <MudItem xs="12" md="7">
+            <MudText Typo="Typo.h6" Style="color:#5c3d2e; font-weight:600; margin-bottom:1rem">
+                Review your order
+            </MudText>
+
+            @foreach (var item in Cart)
+            {
+                <MudPaper Elevation="1" Class="mb-2"
+                          Style="padding:0.75rem 1rem; border-radius:10px">
+                    <div style="display:flex; justify-content:space-between; align-items:center">
+                        <div>
+                            <MudText Typo="Typo.body1" Style="font-weight:600; color:#5c3d2e">
+                                @item.ProductName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color:#a07850">
+                                @item.Quantity × $@item.Price.ToString("0.00")
+                            </MudText>
+                        </div>
+                        <MudText Style="font-weight:700; color:#8b5e3c">
+                            $@item.Subtotal.ToString("0.00")
+                        </MudText>
+                    </div>
+                </MudPaper>
+            }
+        </MudItem>
+
+        @* Place order panel *@
+        <MudItem xs="12" md="5">
+            <MudPaper Elevation="3" Style="padding:1.5rem; border-radius:16px">
+                <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+                    Order Total
+                </MudText>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:1.5rem">
+                    <MudText Style="color:#7a6050">Items (@Cart.Sum(c => c.Quantity))</MudText>
+                    <MudText Style="font-weight:700; font-size:22px; color:#8b5e3c">
+                        $@Total.ToString("0.00")
+                    </MudText>
+                </div>
+
+                <MudButton FullWidth="true"
+                           Variant="Variant.Filled"
+                           Style="background:#8b5e3c; color:white; border-radius:10px;
+                    text-transform:none; padding:12px; font-size:15px"
+                           Disabled="_loading"
+                           OnClick="PlaceOrder">
+                    @if (_loading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Placing order...</span>
+                    }
+                    else
+                    {
+                        <span>Place order — $@Total.ToString("0.00")</span>
+                    }
+                </MudButton>
+
+                <MudButton FullWidth="true"
+                           Variant="Variant.Text"
+                           Style="color:#a07850; text-transform:none; margin-top:8px"
+                           OnClick='() => Nav.NavigateTo("/cart")'>
+                    Back to cart
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    List<CartItem> Cart => Catalog.Cart;
+    decimal Total => Cart.Sum(c => c.Subtotal);
+    bool _loading;
+    bool _orderPlaced;
+    OrderConfirmationDto? _confirmation;
+
+    async Task PlaceOrder()
+    {
+        if (!Auth.IsLoggedIn)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
+        _loading = true;
+        await Task.Yield();
+
+        try
+        {
+            var request = new PlaceOrderRequest
+            {
+                UserId = Auth.UserId,
+                Items = Cart.Select(c => new OrderItemRequest
+                {
+                    ProductId = c.ProductId,
+                    Quantity = c.Quantity
+                }).ToList()
+            };
+
+            var result = OrderService.PlaceOrder(request);
+
+            if (result.Success)
+            {
+                _confirmation = new OrderConfirmationDto
+                {
+                    OrderId = result.Data.OrderId,
+                    TotalAmount = result.Data.TotalAmount,
+                    OrderDate = DateTime.Now,
+                    Items = Cart.Select(c => new OrderItemDto
+                    {
+                        ProductName = c.ProductName,
+                        Quantity = c.Quantity,
+                        UnitPrice = c.Price,
+                        Subtotal = c.Subtotal
+                    }).ToList()
+                };
+
+                Cart.Clear();
+                _orderPlaced = true;
+            }
+            else
+            {
+                Snackbar.Add(result.Message, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

@@ -1,0 +1,150 @@
+﻿@page "/admin/products"
+@rendermode InteractiveServer
+@layout Layout.AdminLayout
+@inject ProductService ProductService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Manage Products — Admin</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+    <MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e">Manage Products</MudText>
+    <MudButton Variant="Variant.Filled"
+               Style="background:#8b5e3c; color:white; border-radius:10px; text-transform:none"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddDialog">
+        Add product
+    </MudButton>
+</div>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudTextField T="string"
+                  @bind-Value="_search"
+                  Placeholder="Search products..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Style="max-width:320px; margin-bottom:1rem" />
+
+    <MudDataGrid T="Product"
+                 Items="@FilteredProducts"
+                 SortMode="SortMode.Multiple"
+                 Hover="true"
+                 Striped="true"
+                 Bordered="true"
+                 Elevation="2"
+                 RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.PId" Title="ID" Sortable="true" />
+            <PropertyColumn Property="x => x.PName" Title="Name" Sortable="true" />
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="Price">
+                <CellTemplate>
+                    <MudText Style="color:#8b5e3c; font-weight:600">
+                        $@context.Item.Price.ToString("0.00")
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Stock">
+                <CellTemplate>
+                    @if (context.Item.Stock > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                                 Style="background:#e8f5e9; color:#2e7d32">
+                            @context.Item.Stock
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                                 Style="background:#ffebee; color:#c62828">
+                            Out of stock
+                        </MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Rating">
+                <CellTemplate>
+                    <MudRating ReadOnly="true"
+                               SelectedValue="@((int)Math.Round((double)context.Item.OverallRating))"
+                               Size="Size.Small" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Style="color:#8b5e3c"
+                                   OnClick="() => OpenEditDialog(context.Item)" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="Product" />
+        </PagerContent>
+    </MudDataGrid>
+}
+
+@code {
+    List<Product> _allProducts = new();
+    bool _loading = true;
+    string _search = "";
+
+    IEnumerable<Product> FilteredProducts => string.IsNullOrWhiteSpace(_search)
+        ? _allProducts
+        : _allProducts.Where(p =>
+            p.PName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => await LoadProducts();
+
+    async Task LoadProducts()
+    {
+        _loading = true;
+        await Task.Yield();
+        _allProducts = new();
+        int page = 1;
+        while (true)
+        {
+            var result = ProductService.GetAllProducts(page);
+            if (!result.Success) break;
+            _allProducts.AddRange(result.Data.Products);
+            if (page >= result.Data.TotalPages) break;
+            page++;
+        }
+        _loading = false;
+    }
+
+    async Task OpenAddDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["EditingProduct"] = (Product?)null
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Add product", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadProducts();
+    }
+
+    async Task OpenEditDialog(Product product)
+    {
+        var parameters = new DialogParameters
+        {
+            ["EditingProduct"] = product
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ProductDialog>("Edit product", parameters, options);
+        var result = await dialog.Result;
+        if (!result.Canceled)
+            await LoadProducts();
+    }
+}

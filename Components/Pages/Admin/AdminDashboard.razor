@@ -1,0 +1,184 @@
+﻿@page "/admin/dashboard"
+@rendermode InteractiveServer
+@layout Layout.AdminLayout
+@inject ProductService ProductService
+@inject OrderService OrderService
+@inject UserService UserService
+@inject ReviewService ReviewService
+@inject NavigationManager Nav
+
+<PageTitle>Dashboard — Admin</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    Dashboard
+</MudText>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else
+{
+    @* Stats cards *@
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:14px;
+                border-left:4px solid #8b5e3c">
+                <div style="display:flex; align-items:center; justify-content:space-between">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color:#a07850">Total Products</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; color:#5c3d2e">
+                            @_totalProducts
+                        </MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                             Style="font-size:48px; color:#e8c9a0" />
+                </div>
+                <MudButton Variant="Variant.Text"
+                           Style="color:#8b5e3c; text-transform:none; padding:0; margin-top:8px"
+                           OnClick='() => Nav.NavigateTo("/admin/products")'>
+                    Manage →
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:14px;
+                border-left:4px solid #c8956c">
+                <div style="display:flex; align-items:center; justify-content:space-between">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color:#a07850">Total Users</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; color:#5c3d2e">
+                            @_totalUsers
+                        </MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.People"
+                             Style="font-size:48px; color:#e8c9a0" />
+                </div>
+                <MudButton Variant="Variant.Text"
+                           Style="color:#8b5e3c; text-transform:none; padding:0; margin-top:8px"
+                           OnClick='() => Nav.NavigateTo("/admin/users")'>
+                    Manage →
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:14px;
+                border-left:4px solid #a07850">
+                <div style="display:flex; align-items:center; justify-content:space-between">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color:#a07850">Total Orders</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; color:#5c3d2e">
+                            @_totalOrders
+                        </MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.ShoppingBag"
+                             Style="font-size:48px; color:#e8c9a0" />
+                </div>
+                <MudButton Variant="Variant.Text"
+                           Style="color:#8b5e3c; text-transform:none; padding:0; margin-top:8px"
+                           OnClick='() => Nav.NavigateTo("/admin/orders")'>
+                    Manage →
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:14px;
+                border-left:4px solid #e8c9a0">
+                <div style="display:flex; align-items:center; justify-content:space-between">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="color:#a07850">Total Reviews</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight:700; color:#5c3d2e">
+                            @_totalReviews
+                        </MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Reviews"
+                             Style="font-size:48px; color:#e8c9a0" />
+                </div>
+                <MudButton Variant="Variant.Text"
+                           Style="color:#8b5e3c; text-transform:none; padding:0; margin-top:8px"
+                           OnClick='() => Nav.NavigateTo("/admin/reviews")'>
+                    Manage →
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    @* Recent orders *@
+    <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+        Recent orders
+    </MudText>
+
+    <MudPaper Elevation="2" Style="border-radius:14px; overflow:hidden">
+        <MudDataGrid T="UserOrderDto"
+                     Items="@_recentOrders"
+                     Hover="true"
+                     Striped="true"
+                     Elevation="0">
+            <Columns>
+                <PropertyColumn Property="x => x.OrderId" Title="Order ID" />
+                <PropertyColumn Property="x => x.OrderDate" Title="Date" Format="MMM dd, yyyy" />
+                <TemplateColumn Title="Total">
+                    <CellTemplate>
+                        <MudText Style="color:#8b5e3c; font-weight:600">
+                            $@context.Item.TotalAmount.ToString("0.00")
+                        </MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Items">
+                    <CellTemplate>
+                        <MudText Typo="Typo.body2">
+                            @context.Item.Items.Count item(s)
+                        </MudText>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudPaper>
+}
+
+@code {
+    bool _loading = true;
+    int _totalProducts;
+    int _totalUsers;
+    int _totalOrders;
+    int _totalReviews;
+    List<UserOrderDto> _recentOrders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var products = ProductService.GetAllProducts(1);
+        _totalProducts = products.Success ? products.Data.TotalPages * 10 : 0;
+
+        var users = UserService.GetAllUsers();
+        _totalUsers = users.Success ? users.Data.Count : 0;
+
+        var reviews = ReviewService.GetAllReviewsForAdmin();
+        _totalReviews = reviews.Success ? reviews.Data.Count : 0;
+
+        // Get recent orders from all users
+        if (users.Success)
+        {
+            foreach (var user in users.Data.Take(10))
+            {
+                var orders = OrderService.GetUserOrders(user.UserId);
+                if (orders.Success)
+                    _recentOrders.AddRange(orders.Data);
+            }
+            _recentOrders = _recentOrders
+                .OrderByDescending(o => o.OrderDate)
+                .Take(10)
+                .ToList();
+            _totalOrders = _recentOrders.Count;
+        }
+
+        _loading = false;
+    }
+}

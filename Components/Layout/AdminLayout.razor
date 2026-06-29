@@ -1,0 +1,66 @@
+﻿@inherits LayoutComponentBase
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Dark">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2">🛒 ShopBlazor — Admin</MudText>
+        <MudSpacer />
+        <MudText Typo="Typo.body2" Color="Color.Inherit" Class="mr-3">@Auth.UserName</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                       Color="Color.Inherit"
+                       OnClick="Logout" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Elevation="2">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6">Admin Panel</MudText>
+        </MudDrawerHeader>
+        <MudNavMenu>
+            <MudNavLink Href="/admin/dashboard" Icon="@Icons.Material.Filled.Dashboard">
+                Dashboard
+            </MudNavLink>
+            <MudNavLink Href="/admin/products" Icon="@Icons.Material.Filled.Inventory">
+                Products
+            </MudNavLink>
+            <MudNavLink Href="/admin/orders" Icon="@Icons.Material.Filled.ShoppingBag">
+                Orders
+            </MudNavLink>
+            <MudNavLink Href="/admin/users" Icon="@Icons.Material.Filled.People">
+                Users
+            </MudNavLink>
+            <MudNavLink Href="/admin/reviews" Icon="@Icons.Material.Filled.Reviews">
+                Reviews
+            </MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    bool _drawerOpen = true;
+
+    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/");
+    }
+}

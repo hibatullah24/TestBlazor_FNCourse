@@ -1,0 +1,125 @@
+﻿@page "/profile"
+@layout Layout.UserLayout
+@inject UserService UserService
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+
+
+<PageTitle>My Profile — ShopBlazor</PageTitle>
+
+<MudGrid Justify="Justify.Center">
+    <MudItem xs="12" md="8">
+
+        @* Profile header *@
+        <MudPaper Elevation="2"
+                  Style="padding:2rem; border-radius:16px; margin-bottom:1.5rem;
+            background:linear-gradient(135deg,#fdf0e6,#e8c9a0)">
+            <div style="display:flex; align-items:center; gap:1.5rem">
+                <MudAvatar Style="width:72px; height:72px; background:#8b5e3c; font-size:28px">
+                    @Auth.UserName.First()
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h5" Style="font-weight:700; color:#5c3d2e">
+                        @Auth.UserName
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small"
+                             Style="background:#8b5e3c; color:white; margin-top:4px">
+                        @Auth.Role
+                    </MudChip>
+                </div>
+            </div>
+        </MudPaper>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" />
+        }
+        else if (_user != null)
+        {
+            @* User details *@
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:16px; margin-bottom:1.5rem">
+                <MudText Typo="Typo.h6"
+                         Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+                    Account details
+                </MudText>
+
+                <div style="display:flex; flex-direction:column; gap:0.75rem">
+                    <div style="display:flex; align-items:center; gap:12px">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Style="color:#c8956c" />
+                        <MudText Typo="Typo.body1" Style="color:#5c3d2e">@_user.Name</MudText>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px">
+                        <MudIcon Icon="@Icons.Material.Filled.Email" Style="color:#c8956c" />
+                        <MudText Typo="Typo.body1" Style="color:#5c3d2e">@_user.Email</MudText>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:12px">
+                        <MudIcon Icon="@Icons.Material.Filled.Phone" Style="color:#c8956c" />
+                        <MudText Typo="Typo.body1" Style="color:#5c3d2e">@_user.Phone</MudText>
+                    </div>
+                </div>
+            </MudPaper>
+
+            @* Recent orders *@
+            <MudPaper Elevation="2" Style="padding:1.5rem; border-radius:16px">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+                    <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e">
+                        Recent orders
+                    </MudText>
+                    <MudButton Variant="Variant.Text"
+                               Style="color:#8b5e3c; text-transform:none"
+                               OnClick='() => Nav.NavigateTo("/orders")'>
+                        View all
+                    </MudButton>
+                </div>
+
+                @if (!_user.Orders.Any())
+                {
+                    <MudText Typo="Typo.body2" Style="color:#a07850">No orders yet.</MudText>
+                }
+                else
+                {
+                    @foreach (var order in _user.Orders.Take(3))
+                    {
+                        <div style="display:flex; justify-content:space-between;
+                            padding:10px 0; border-bottom:1px solid #f0e6da">
+                            <div>
+                                <MudText Typo="Typo.body2" Style="font-weight:600; color:#5c3d2e">
+                                    Order #@order.OrderId
+                                </MudText>
+                                <MudText Typo="Typo.caption" Style="color:#a07850">
+                                    @order.OrderDate.ToString("MMM dd, yyyy")
+                                </MudText>
+                            </div>
+                            <MudText Style="font-weight:700; color:#8b5e3c">
+                                $@order.TotalAmount.ToString("0.00")
+                            </MudText>
+                        </div>
+                    }
+                }
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    UserDto? _user;
+    bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        try
+        {
+            var result = UserService.GetOwnProfile(Auth.UserId);
+            if (result.Success)
+                _user = result.Data;
+        }
+        catch { }
+
+        _loading = false;
+    }
+}

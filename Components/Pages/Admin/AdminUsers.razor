@@ -1,0 +1,86 @@
+﻿@page "/admin/users"
+@rendermode InteractiveServer
+@layout Layout.AdminLayout
+@inject UserService UserService
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Users — Admin</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    Manage Users
+</MudText>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudTextField T="string"
+                  @bind-Value="_search"
+                  Placeholder="Search by name or email..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Style="max-width:320px; margin-bottom:1rem" />
+
+    <MudDataGrid T="UserDto"
+                 Items="@FilteredUsers"
+                 SortMode="SortMode.Multiple"
+                 Hover="true"
+                 Striped="true"
+                 Bordered="true"
+                 Elevation="2"
+                 RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.UserId" Title="ID" Sortable="true" />
+            <PropertyColumn Property="x => x.Name" Title="Name" Sortable="true" />
+            <PropertyColumn Property="x => x.Email" Title="Email" Sortable="true" />
+            <PropertyColumn Property="x => x.Phone" Title="Phone" />
+            <TemplateColumn Title="Orders">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small"
+                             Style="background:#fdf0e6; color:#8b5e3c">
+                        @context.Item.Orders.Count order(s)
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Total spent">
+                <CellTemplate>
+                    <MudText Style="font-weight:600; color:#8b5e3c">
+                        $@context.Item.Orders.Sum(o => o.TotalAmount).ToString("0.00")
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="UserDto" />
+        </PagerContent>
+    </MudDataGrid>
+}
+
+@code {
+    List<UserDto> _allUsers = new();
+    bool _loading = true;
+    string _search = "";
+
+    IEnumerable<UserDto> FilteredUsers => string.IsNullOrWhiteSpace(_search)
+        ? _allUsers
+        : _allUsers.Where(u =>
+            u.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var result = UserService.GetAllUsers();
+        _allUsers = result.Success ? result.Data : new();
+
+        _loading = false;
+    }
+}

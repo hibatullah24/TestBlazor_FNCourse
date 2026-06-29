@@ -1,0 +1,238 @@
+﻿@page "/product/{Id:int}"
+@layout Layout.UserLayout
+@inject ProductService ProductService
+@inject ReviewService ReviewService
+@inject AppAuthState Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@rendermode InteractiveServer
+
+
+<PageTitle>Product Detail</PageTitle>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else if (_product == null)
+{
+    <MudText Typo="Typo.h6" Style="color:#8b5e3c">Product not found.</MudText>
+}
+else
+{
+    <MudBreadcrumbs Items="_breadcrumbs" Style="padding:0; margin-bottom:1rem" />
+
+    <MudGrid>
+        @* Left — product image placeholder *@
+        <MudItem xs="12" md="5">
+            <div style="height:340px; background:linear-gradient(135deg,#fdf0e6,#e8c9a0);
+                border-radius:16px; display:flex; align-items:center; justify-content:center">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingBag"
+                         Style="font-size:100px; color:#c8956c; opacity:0.5" />
+            </div>
+        </MudItem>
+
+        @* Right — product info *@
+        <MudItem xs="12" md="7">
+            <div style="display:flex; flex-direction:column; gap:1rem; padding-left:1rem">
+
+                <MudText Typo="Typo.h4" Style="font-weight:700; color:#5c3d2e">
+                    @_product.PName
+                </MudText>
+
+                @if (_product.OverallRating > 0)
+                {
+                    <div style="display:flex; align-items:center; gap:8px">
+                        <MudRating ReadOnly="true"
+                                   SelectedValue="@((int)Math.Round((double)_product.OverallRating))"
+                                   Size="Size.Medium" />
+                        <MudText Typo="Typo.body2" Style="color:#a07850">
+                            @_product.OverallRating.ToString("0.0") / 5.0
+                        </MudText>
+                    </div>
+                }
+
+                <MudText Typo="Typo.h5" Style="color:#8b5e3c; font-weight:700">
+                    $@_product.Price.ToString("0.00")
+                </MudText>
+
+                <MudText Typo="Typo.body1" Style="color:#7a6050; line-height:1.7">
+                    @_product.Description
+                </MudText>
+
+                @if (_product.Stock > 0)
+                {
+                    <MudChip T="string" Style="background:#e8f5e9; color:#2e7d32; width:fit-content">
+                        In stock — @_product.Stock available
+                    </MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Style="background:#ffebee; color:#c62828; width:fit-content">
+                        Out of stock
+                    </MudChip>
+                }
+
+                <div style="display:flex; align-items:center; gap:1rem; margin-top:0.5rem">
+                    <MudNumericField T="int"
+                                     @bind-Value="_quantity"
+                                     Min="1"
+                                     Max="@_product.Stock"
+                                     Variant="Variant.Outlined"
+                                     Label="Qty"
+                                     Style="max-width:100px" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Style="background:#8b5e3c; color:white; border-radius:10px;
+                        text-transform:none; padding:10px 24px"
+                               StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                               Disabled="@(_product.Stock == 0)"
+                               OnClick="AddToCart">
+                        Add to cart
+                    </MudButton>
+                </div>
+
+            </div>
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-6" />
+
+    @* Reviews section *@
+    <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+        Customer Reviews
+    </MudText>
+
+    @if (_reviewsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Style="background:#e8c9a0" />
+    }
+    else if (_reviews == null || !_reviews.Any())
+    {
+        <MudAlert Severity="Severity.Info" Style="background:#fdf6f0; color:#8b5e3c">
+            No reviews yet for this product.
+        </MudAlert>
+    }
+    else
+    {
+        @foreach (var review in _reviews)
+        {
+            <MudPaper Elevation="1" Class="mb-3"
+                      Style="padding:1rem; border-radius:12px; border-left:4px solid #c8956c">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <MudRating ReadOnly="true" SelectedValue="@review.Rating" Size="Size.Small" />
+                    <MudText Typo="Typo.caption" Style="color:#a07850">
+                        @(review.ReviewDate?.ToString("MMM dd, yyyy") ?? "N/A")                    </MudText>
+                </div>
+                <MudText Typo="Typo.body2" Style="margin-top:8px; color:#5c3d2e">
+                    @review.Comment
+                </MudText>
+            </MudPaper>
+        }
+
+        @* Pagination *@
+        @if (_totalReviewPages > 1)
+        {
+            <div style="display:flex; justify-content:center; margin-top:1rem">
+                <MudPagination Count="@_totalReviewPages"
+                               Selected="@_reviewPage"
+                               SelectedChanged="LoadReviews"
+                               Color="Color.Primary" />
+            </div>
+        }
+    }
+
+    @* Write review button — only if logged in *@
+    @if (Auth.IsLoggedIn)
+    {
+        <div style="margin-top:1.5rem">
+            <MudButton Variant="Variant.Outlined"
+                       Style="border-color:#8b5e3c; color:#8b5e3c; border-radius:10px; text-transform:none"
+                       StartIcon="@Icons.Material.Filled.RateReview"
+                       OnClick='() => Nav.NavigateTo($"/review/{Id}")'>
+                Write a review
+            </MudButton>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    Product? _product;
+    List<ReviewDto>? _reviews;
+    bool _loading = true;
+    bool _reviewsLoading = false;
+    int _quantity = 1;
+    int _reviewPage = 1;
+    int _totalReviewPages = 1;
+
+    List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProduct();
+        await LoadReviews(1);
+    }
+
+    async Task LoadProduct()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var result = ProductService.GetProductById(Id);
+        if (result.Success)
+        {
+            _product = result.Data;
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new("Catalog", "/catalog"),
+                new(_product.PName, null, disabled: true)
+            };
+        }
+
+        _loading = false;
+    }
+
+    async Task LoadReviews(int page)
+    {
+        _reviewsLoading = true;
+        await Task.Yield();
+
+        var result = ReviewService.GetProductReviews(Id, page);
+        if (result.Success)
+        {
+            _reviews = result.Data.Reviews;
+            _totalReviewPages = result.Data.TotalPages;
+            _reviewPage = page;
+        }
+        else
+        {
+            _reviews = new();
+        }
+
+        _reviewsLoading = false;
+    }
+
+    void AddToCart()
+    {
+        if (_product == null) return;
+
+        var existing = Catalog.Cart.FirstOrDefault(c => c.ProductId == _product.PId);
+        if (existing != null)
+            existing.Quantity += _quantity;
+        else
+            Catalog.Cart.Add(new CartItem
+            {
+                ProductId = _product.PId,
+                ProductName = _product.PName,
+                Price = _product.Price,
+                Quantity = _quantity,
+                Stock = _product.Stock
+            });
+
+        Snackbar.Add($"{_product.PName} added to cart!", Severity.Success);
+    }
+}

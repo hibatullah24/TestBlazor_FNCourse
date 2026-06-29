@@ -1,0 +1,257 @@
+﻿@page "/admin/reviews"
+@rendermode InteractiveServer
+@layout Layout.AdminLayout
+@inject ReviewService ReviewService
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Reviews — Admin</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    Manage Reviews
+</MudText>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else
+{
+    @* Search + filter bar *@
+    <div style="display:flex; gap:1rem; margin-bottom:1.5rem; align-items:center; flex-wrap:wrap">
+        <MudTextField T="string"
+                      @bind-Value="_search"
+                      Placeholder="Search by comment or product..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined"
+                      Immediate="true"
+                      Style="max-width:320px" />
+
+        <MudSelect T="int?" Label="Filter by rating"
+                   @bind-Value="_ratingFilter"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   Style="max-width:180px">
+            <MudSelectItem T="int?" Value="5">⭐⭐⭐⭐⭐ 5 stars</MudSelectItem>
+            <MudSelectItem T="int?" Value="4">⭐⭐⭐⭐ 4 stars</MudSelectItem>
+            <MudSelectItem T="int?" Value="3">⭐⭐⭐ 3 stars</MudSelectItem>
+            <MudSelectItem T="int?" Value="2">⭐⭐ 2 stars</MudSelectItem>
+            <MudSelectItem T="int?" Value="1">⭐ 1 star</MudSelectItem>
+        </MudSelect>
+
+        <MudChip T="string" Style="background:#fdf0e6; color:#8b5e3c">
+            @FilteredReviews.Count() total
+        </MudChip>
+    </div>
+
+    @* Reviews Table *@
+    <MudDataGrid T="ReviewDto"
+                 Items="@FilteredReviews"
+                 SortMode="SortMode.Multiple"
+                 Filterable="false"
+                 Hover="true"
+                 Striped="true"
+                 Bordered="true"
+                 Elevation="2"
+                 RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.ReviewId" Title="ID" Sortable="true" />
+            <PropertyColumn Property="x => x.ProductName" Title="Product" Sortable="true" />
+            <PropertyColumn Property="x => x.UserId" Title="User ID" Sortable="true" />
+
+            <TemplateColumn Title="Rating">
+                <CellTemplate>
+                    <MudRating ReadOnly="true"
+                               SelectedValue="@context.Item.Rating"
+                               Size="Size.Small" />
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Comment">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2"
+                             Style="max-width:280px; white-space:nowrap;
+                        overflow:hidden; text-overflow:ellipsis">
+                        @context.Item.Comment
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Date">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2">
+                        @(context.Item.ReviewDate.HasValue
+                            ? context.Item.ReviewDate.Value.ToString("MMM dd, yyyy")
+                            : "-")
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <div style="display:flex; gap:8px">
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Size="Size.Small"
+                                       Style="color:#8b5e3c"
+                                       OnClick="@(() => ViewReview(context.Item))"
+                                       Title="View full review" />
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => AskDelete(context.Item))"
+                                       Title="Delete review" />
+                    </div>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+
+        <PagerContent>
+            <MudDataGridPager T="ReviewDto" />
+        </PagerContent>
+    </MudDataGrid>
+}
+
+@* ── View dialog ── *@
+<MudDialog @bind-IsVisible="_viewOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            Review #@_selectedReview?.ReviewId
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_selectedReview != null)
+        {
+            <div style="display:flex; flex-direction:column; gap:1rem; min-width:360px">
+                <div style="display:flex; justify-content:space-between">
+                    <MudText Typo="Typo.body2" Style="color:#a07850">Product</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600">
+                        @_selectedReview.ProductName
+                    </MudText>
+                </div>
+                <div style="display:flex; justify-content:space-between">
+                    <MudText Typo="Typo.body2" Style="color:#a07850">User ID</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600">
+                        @_selectedReview.UserId
+                    </MudText>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <MudText Typo="Typo.body2" Style="color:#a07850">Rating</MudText>
+                    <MudRating ReadOnly="true"
+                               SelectedValue="@_selectedReview.Rating"
+                               Size="Size.Small" />
+                </div>
+                <div style="display:flex; justify-content:space-between">
+                    <MudText Typo="Typo.body2" Style="color:#a07850">Date</MudText>
+                    <MudText Typo="Typo.body2">
+                        @(_selectedReview.ReviewDate.HasValue
+                            ? _selectedReview.ReviewDate.Value.ToString("MMM dd, yyyy HH:mm")
+                            : "-")
+                    </MudText>
+                </div>
+                <MudDivider />
+                <MudText Typo="Typo.body2" Style="color:#a07850">Comment</MudText>
+                <MudPaper Elevation="0"
+                          Style="background:#fdf6f0; padding:1rem; border-radius:8px;
+                    border:1px solid #e8c9a0">
+                    <MudText Typo="Typo.body2">@_selectedReview.Comment</MudText>
+                </MudPaper>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _viewOpen = false)">Close</MudButton>
+        <MudButton Color="Color.Error"
+                   Variant="Variant.Filled"
+                   OnClick="@(() => { _viewOpen = false; AskDelete(_selectedReview!); })">
+            Delete
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@* ── Confirm delete dialog ── *@
+<MudDialog @bind-IsVisible="_confirmOpen">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete review</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1">
+            Are you sure you want to delete the review by User
+            #@_reviewToDelete?.UserId? This cannot be undone.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _confirmOpen = false)">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   OnClick="ExecuteDelete">
+            Delete
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    List<ReviewDto> _allReviews = new();
+    bool _loading = true;
+    string _search = "";
+    int? _ratingFilter;
+
+    bool _viewOpen = false;
+    bool _confirmOpen = false;
+    ReviewDto? _selectedReview;
+    ReviewDto? _reviewToDelete;
+
+    IEnumerable<ReviewDto> FilteredReviews => _allReviews
+        .Where(r =>
+            (string.IsNullOrWhiteSpace(_search) ||
+             (r.Comment ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+             (r.ProductName ?? "").Contains(_search, StringComparison.OrdinalIgnoreCase))
+            &&
+            (_ratingFilter == null || r.Rating == _ratingFilter));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var result = ReviewService.GetAllReviewsForAdmin();
+        _allReviews = result.Success ? result.Data : new();
+
+        _loading = false;
+    }
+
+    void ViewReview(ReviewDto review)
+    {
+        _selectedReview = review;
+        _viewOpen = true;
+    }
+
+    void AskDelete(ReviewDto review)
+    {
+        _reviewToDelete = review;
+        _confirmOpen = true;
+    }
+
+    async Task ExecuteDelete()
+    {
+        _confirmOpen = false;
+        if (_reviewToDelete == null) return;
+
+        var result = ReviewService.DeleteReview(
+            _reviewToDelete.ReviewId,
+            _reviewToDelete.UserId);
+
+        if (result.Success)
+        {
+            _allReviews.Remove(_reviewToDelete);
+            Snackbar.Add("Review deleted.", Severity.Success);
+            _reviewToDelete = null;
+        }
+        else
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+        }
+    }
+}

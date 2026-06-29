@@ -1,0 +1,155 @@
+﻿@page "/cart"
+@layout Layout.UserLayout
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Cart — ShopBlazor</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    🛒 Your Cart
+</MudText>
+
+@if (!CartItems.Any())
+{
+    <div style="text-align:center; margin-top:5rem">
+        <MudIcon Icon="@Icons.Material.Filled.ShoppingCartCheckout"
+                 Style="font-size:80px; color:#e8c9a0" />
+        <MudText Typo="Typo.h6" Style="color:#8b5e3c; margin-top:1rem">Your cart is empty</MudText>
+        <MudButton Variant="Variant.Filled"
+                    Style="background:#8b5e3c; color:white; margin-top:1rem; border-radius:10px; text-transform:none"
+                    OnClick='() => Nav.NavigateTo("/catalog")'>
+                Browse products
+        </MudButton>
+    </div>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="8">
+            @foreach (var item in CartItems)
+            {
+                <MudPaper Elevation="2" Class="mb-3" Style="padding:1rem; border-radius:12px">
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem">
+                        <div style="width:60px; height:60px; background:linear-gradient(135deg,#fdf0e6,#e8c9a0); border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0">
+                            <MudIcon Icon="@Icons.Material.Filled.ShoppingBag" Style="color:#c8956c" />
+                        </div>
+
+                        <div style="flex:1">
+                            <MudText Typo="Typo.body1" Style="font-weight:600; color:#5c3d2e">
+                                @item.ProductName
+                            </MudText>
+                            <MudText Typo="Typo.body2" Style="color:#a07850">
+                                $@item.Price.ToString("0.00") each
+                            </MudText>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:8px">
+                            <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                           Size="Size.Small"
+                                           Style="background:#fdf0e6; color:#8b5e3c"
+                                           OnClick="() => ChangeQty(item, -1)" />
+                            <MudText Style="min-width:24px; text-align:center; font-weight:600">
+                                @item.Quantity
+                            </MudText>
+                            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                           Size="Size.Small"
+                                           Style="background:#fdf0e6; color:#8b5e3c"
+                                           Disabled="@(item.Quantity >= item.Stock)"
+                                           OnClick="() => ChangeQty(item, 1)" />
+                        </div>
+
+                        <MudText Style="font-weight:700; color:#8b5e3c; min-width:80px; text-align:right">
+                            $@item.Subtotal.ToString("0.00")
+                        </MudText>
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="() => RemoveItem(item)" />
+                    </div>
+                </MudPaper>
+            }
+
+            <MudButton Variant="Variant.Text"
+                       Style="color:#a07850; text-transform:none"
+                       StartIcon="@Icons.Material.Filled.DeleteSweep"
+                       OnClick="ClearCart">
+                Clear cart
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="3" Style="padding:1.5rem; border-radius:16px; position:sticky; top:80px">
+                <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+                    Order Summary
+                </MudText>
+
+                @foreach (var item in CartItems)
+                {
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px">
+                        <MudText Typo="Typo.body2" Style="color:#7a6050">
+                            @item.ProductName × @item.Quantity
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color:#5c3d2e">
+                            $@item.Subtotal.ToString("0.00")
+                        </MudText>
+                    </div>
+                }
+
+                <MudDivider Class="my-3" />
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:1.5rem">
+                    <MudText Style="font-weight:700; color:#5c3d2e">Total</MudText>
+                    <MudText Style="font-weight:700; font-size:20px; color:#8b5e3c">
+                        $@Total.ToString("0.00")
+                    </MudText>
+                </div>
+
+                <MudButton FullWidth="true"
+                           Variant="Variant.Filled"
+                           Style="background:#8b5e3c; color:white; border-radius:10px; text-transform:none; padding:12px; font-size:15px"
+                           StartIcon="@Icons.Material.Filled.Payment"
+                           OnClick='() => Nav.NavigateTo("/checkout")'>
+                     Proceed to checkout
+                </MudButton>
+
+                <MudButton
+                    FullWidth="true"
+                    Variant="Variant.Text"
+                    Style="color:#a07850; text-transform:none; margin-top:8px"
+                    OnClick='() => Nav.NavigateTo("/catalog")'>
+                    Continue shopping
+                </MudButton>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    List<CartItem> CartItems  => Catalog.Cart;
+    decimal Total => CartItems.Sum(c => c.Subtotal);
+
+    void ChangeQty(CartItem item, int delta)
+    {
+        item.Quantity += delta;
+        if (item.Quantity <= 0)
+            CartItems.Remove(item);
+
+        StateHasChanged();
+    }
+
+    void RemoveItem(CartItem item)
+    {
+        CartItems.Remove(item);
+        Snackbar.Add($"{item.ProductName} removed.", Severity.Info);
+        StateHasChanged();
+    }
+
+    void ClearCart()
+    {
+        CartItems.Clear();
+        Snackbar.Add("Cart cleared.", Severity.Info);
+        StateHasChanged();
+    }
+}

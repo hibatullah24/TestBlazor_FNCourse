@@ -1,0 +1,40 @@
+﻿@rendermode InteractiveServer
+@inherits LayoutComponentBase
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudText Typo="Typo.h6" Class="ml-3">🛒 ShopBlazor</MudText>
+        <MudSpacer />
+        <MudButton Color="Color.Inherit" OnClick='() => Nav.NavigateTo("/catalog")'>Catalog</MudButton>
+        <MudButton Color="Color.Inherit" OnClick='() => Nav.NavigateTo("/cart")'>Cart</MudButton>
+        <MudButton Color="Color.Inherit" OnClick='() => Nav.NavigateTo("/orders")'>My Orders</MudButton>
+        <MudMenu Icon="@Icons.Material.Filled.AccountCircle"
+                 Color="Color.Inherit"
+                 Direction="Direction.Bottom">
+            <MudMenuItem OnClick='() => Nav.NavigateTo("/profile")'>My Profile</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem OnClick="Logout">Logout</MudMenuItem>
+        </MudMenu>
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    void Logout()
+    {
+        Auth.Logout();
+        Nav.NavigateTo("/");
+    }
+}

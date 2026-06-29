@@ -1,0 +1,132 @@
+﻿@page "/"
+@page "/login"
+@rendermode InteractiveServer
+@layout Layout.MainLayout
+@inject AuthService AuthService
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Login — ShopBlazor</PageTitle>
+
+<div style="display:flex; min-height:100vh; align-items:center; justify-content:center; background:#fdf6f0">
+    <div style="display:flex; width:900px; min-height:520px; border-radius:20px; overflow:hidden; box-shadow:0 8px 40px rgba(139,90,43,0.15)">
+
+        @* LEFT — form *@
+        <div style="flex:1; background:#ffffff; padding:3rem 2.5rem; display:flex; flex-direction:column; justify-content:center; gap:1.4rem">
+
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e">Welcome back</MudText>
+                <MudText Typo="Typo.body2" Style="color:#a07850; margin-top:4px">Sign in to your account</MudText>
+            </div>
+
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <div style="display:flex; flex-direction:column; gap:1rem">
+                    <MudTextField T="string"
+                                  Label="Email address"
+                                  @bind-Value="_email"
+                                  InputType="InputType.Email"
+                                  Required="true"
+                                  RequiredError="Email is required"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Email"
+                                  Variant="Variant.Outlined" />
+
+                    <MudTextField T="string"
+                                  Label="Password"
+                                  @bind-Value="_password"
+                                  InputType="@_passwordType"
+                                  Required="true"
+                                  RequiredError="Password is required"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@_passwordIcon"
+                                  OnAdornmentClick="TogglePassword"
+                                  Variant="Variant.Outlined" />
+                </div>
+            </MudForm>
+
+            <MudButton FullWidth="true"
+                       Variant="Variant.Filled"
+                       Style="background:#8b5e3c; color:white; padding:12px; border-radius:10px; font-size:15px; font-weight:500; text-transform:none"
+                       Disabled="_loading"
+                       OnClick="HandleLogin">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign in</span>
+                }
+            </MudButton>
+
+            <MudText Typo="Typo.body2" Align="Align.Center" Style="color:#a07850">
+                Don't have an account?
+                <MudLink Href="/register" Style="color:#8b5e3c; font-weight:600">Register</MudLink>
+            </MudText>
+        </div>
+
+        @* RIGHT — illustration *@
+        <div style="width:340px; background:linear-gradient(160deg,#c8956c,#e8c9a0); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:2rem; position:relative; overflow:hidden">
+
+            @* decorative blobs *@
+            <div style="position:absolute; width:250px; height:250px; border-radius:50%; background:rgba(255,255,255,0.15); top:-80px; right:-80px"></div>
+            <div style="position:absolute; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.1); bottom:-50px; left:-60px"></div>
+
+        
+
+            @* image *@
+            <img src="/webShopping.png"
+                 alt="Shopping illustration"
+                 style="width:100%; max-width:300px;height:500px; z-index:1; object-fit:contain" />
+        </div>
+
+    </div>
+</div>
+
+@code {
+    MudForm _form = null!;
+    string _email = "";
+    string _password = "";
+    bool _isValid;
+    bool _loading;
+    InputType _passwordType = InputType.Password;
+    string _passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    void TogglePassword()
+    {
+        _passwordType = _passwordType == InputType.Password ? InputType.Text : InputType.Password;
+        _passwordIcon = _passwordType == InputType.Password
+            ? Icons.Material.Filled.VisibilityOff
+            : Icons.Material.Filled.Visibility;
+    }
+
+    async Task HandleLogin()
+    {
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _loading = true;
+        try
+        {
+            var result = AuthService.Login(new LoginRequest
+            {
+                Email = _email,
+                Password = _password
+            });
+
+            Auth.Login(result.UserId, result.Role, result.UserName);
+            Snackbar.Add($"Welcome back, {result.UserName}!", Severity.Success);
+            Nav.NavigateTo(result.Role == "Admin" ? "/admin/dashboard" : "/catalog");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

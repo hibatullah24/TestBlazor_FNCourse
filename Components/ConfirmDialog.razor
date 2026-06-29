@@ -1,0 +1,18 @@
+﻿@inject MudBlazor.IDialogService DialogService
+@* Components/ConfirmDialog.razor *@
+<MudText Typo="Typo.body1" Style="padding:1rem">@Message</MudText>
+
+<MudDialogActions>
+    <MudButton OnClick="Cancel">Cancel</MudButton>
+    <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="Confirm">
+        Delete
+    </MudButton>
+</MudDialogActions>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Message { get; set; } = "";
+
+    void Confirm() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+}

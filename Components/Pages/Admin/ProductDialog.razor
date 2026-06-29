@@ -1,0 +1,87 @@
+﻿@inject ProductService ProductService
+@inject ISnackbar Snackbar
+
+<MudDialogContent>
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+        @if (EditingProduct == null)
+        {
+            <MudTextField T="string" Label="Product name" @bind-Value="_pName"
+                          Required="true" Variant="Variant.Outlined" />
+            <MudTextField T="string" Label="Description" @bind-Value="_pDesc"
+                          Lines="3" Variant="Variant.Outlined" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body1" Style="font-weight:600; color:#5c3d2e">
+                @EditingProduct.PName
+            </MudText>
+            <MudText Typo="Typo.body2" Style="color:#a07850">
+                @EditingProduct.Description
+            </MudText>
+        }
+        <MudNumericField T="decimal" Label="Price" @bind-Value="_pPrice"
+                         Min="0.01m" Variant="Variant.Outlined"
+                         Adornment="Adornment.Start" AdornmentText="$" />
+        <MudNumericField T="int" Label="Stock" @bind-Value="_pStock"
+                         Min="0" Variant="Variant.Outlined" />
+    </div>
+</MudDialogContent>
+
+<MudDialogActions>
+    <MudButton OnClick="Cancel">Cancel</MudButton>
+    <MudButton Variant="Variant.Filled"
+               Style="background:#8b5e3c; color:white"
+               Disabled="_saving"
+               OnClick="Save">
+        @if (_saving)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        Save
+    </MudButton>
+</MudDialogActions>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Product? EditingProduct { get; set; }
+
+    string _pName = "";
+    string _pDesc = "";
+    decimal _pPrice = 0;
+    int _pStock = 0;
+    bool _saving = false;
+
+    protected override void OnParametersSet()
+    {
+        if (EditingProduct != null)
+        {
+            _pPrice = EditingProduct.Price;
+            _pStock = EditingProduct.Stock;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Save()
+    {
+        _saving = true;
+
+        var result = EditingProduct == null
+            ? ProductService.AddProduct(new AddProductRequest
+                { PName = _pName, Description = _pDesc, Price = _pPrice, Stock = _pStock })
+            : ProductService.UpdateProduct(EditingProduct.PId, new UpdateProductRequest
+                { Price = _pPrice, Stock = _pStock });
+
+        if (result.Success)
+        {
+            Snackbar.Add(result.Message, Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+        }
+
+        _saving = false;
+    }
+}

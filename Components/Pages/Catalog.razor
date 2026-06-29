@@ -1,0 +1,187 @@
+﻿@page "/catalog"
+@layout Layout.UserLayout
+@inject ProductService ProductService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+<PageTitle>Catalog — ShopBlazor</PageTitle>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else if (_products == null || !_products.Any())
+{
+    <div style="text-align:center; margin-top:5rem">
+        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Style="font-size:64px; color:#e8c9a0" />
+        <MudText Typo="Typo.h6" Style="color:#8b5e3c; margin-top:1rem">No products available</MudText>
+    </div>
+}
+else
+{
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem">
+        <div>
+            <MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e">Our Products</MudText>
+            <MudText Typo="Typo.body2" Style="color:#a07850">Page @_currentPage of @_totalPages</MudText>
+        </div>
+        <MudTextField T="string"
+                      @bind-Value="_search"
+                      Placeholder="Search products..."
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined"
+                      Style="max-width:280px"
+                      Immediate="true" />
+    </div>
+
+    <MudGrid>
+        @foreach (var product in FilteredProducts)
+        {
+            <MudItem xs="12" sm="6" md="4" lg="3">
+                <MudCard Elevation="2"
+                         Style="border-radius:12px; height:100%; cursor:pointer; transition:box-shadow 0.2s;"
+                         @onclick="() => GoToDetail(product.PId)">
+
+                    <div style="height:160px; background:linear-gradient(135deg,#fdf0e6,#e8c9a0);
+                        display:flex; flex-direction:column; align-items:center;
+                        justify-content:center; gap:6px;">
+                        <MudIcon Icon="@Icons.Material.Filled.ShoppingBag"
+                                 Style="font-size:52px; color:#c8956c; opacity:0.7" />
+                        <MudText Typo="Typo.caption" Style="color:#a07850; font-weight:500">
+                            @product.PName
+                        </MudText>
+                    </div>
+
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6"
+                                 Style="font-weight:600; color:#5c3d2e; font-size:15px;
+                            white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
+                            @product.PName
+                        </MudText>
+
+                        <MudText Typo="Typo.body2"
+                                 Style="color:#a07850; margin-top:4px; font-size:13px;
+                            display:-webkit-box; -webkit-line-clamp:2;
+                            -webkit-box-orient:vertical; overflow:hidden">
+                            @product.Description
+                        </MudText>
+
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px">
+                            <MudText Style="font-weight:700; font-size:18px; color:#8b5e3c">
+                                $@product.Price.ToString("0.00")
+                            </MudText>
+                            @if (product.Stock > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Style="background:#e8f5e9; color:#2e7d32; font-size:11px">
+                                    In stock (@product.Stock)
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Style="background:#ffebee; color:#c62828; font-size:11px">
+                                    Out of stock
+                                </MudChip>
+                            }
+                        </div>
+
+                        @if (product.OverallRating > 0)
+                        {
+                            <div style="display:flex; align-items:center; gap:4px; margin-top:8px">
+                                <MudRating ReadOnly="true"
+                                           SelectedValue="@((int)Math.Round((double)product.OverallRating))"
+                                           Size="Size.Small" />
+                                <MudText Typo="Typo.caption" Style="color:#a07850">
+                                    (@product.OverallRating.ToString("0.0"))
+                                </MudText>
+                            </div>
+                        }
+                    </MudCardContent>
+
+                    <MudCardActions Style="padding:0 16px 16px">
+                        <MudButton FullWidth="true"
+                                   Variant="Variant.Filled"
+                                   Style="background:#8b5e3c; color:white; border-radius:8px; text-transform:none"
+                                   StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                                   Disabled="@(product.Stock == 0)"
+                                   OnClick="@((e) => AddToCart(product, e))">
+                            @(product.Stock == 0 ? "Out of stock" : "Add to cart")
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <div style="display:flex; justify-content:center; margin-top:2rem">
+        <MudPagination Count="@_totalPages"
+                       Selected="@_currentPage"
+                       SelectedChanged="OnPageChanged"
+                       Color="Color.Primary"
+                       ShowFirstButton="true"
+                       ShowLastButton="true" />
+    </div>
+}
+
+@code {
+    List<Product>? _products;
+    bool _loading = true;
+    int _currentPage = 1;
+    int _totalPages = 1;
+    string _search = "";
+
+    public static List<CartItem> Cart { get; private set; } = new();
+
+    IEnumerable<Product> FilteredProducts => string.IsNullOrWhiteSpace(_search)
+        ? _products!
+        : _products!.Where(p => p.PName.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync() => await LoadPage(1);
+
+    async Task LoadPage(int page)
+    {
+        _loading = true;
+        await Task.Yield();
+        var result = ProductService.GetAllProducts(page);
+        if (result.Success)
+        {
+            _products = result.Data.Products;
+            _currentPage = result.Data.Page;
+            _totalPages = result.Data.TotalPages;
+        }
+        else
+        {
+            _products = new List<Product>();
+            Snackbar.Add(result.Message, Severity.Warning);
+        }
+        _loading = false;
+    }
+
+    async Task OnPageChanged(int page) => await LoadPage(page);
+    void GoToDetail(int productId) => Nav.NavigateTo($"/product/{productId}");
+
+    void AddToCart(Product product, MouseEventArgs e)
+    {
+        var existing = Cart.FirstOrDefault(c => c.ProductId == product.PId);
+        if (existing != null)
+        {
+            if (existing.Quantity < existing.Stock) existing.Quantity++;
+        }
+        else
+        {
+            Cart.Add(new CartItem
+            {
+                ProductId = product.PId,
+                ProductName = product.PName,
+                Price = product.Price,
+                Quantity = 1,
+                Stock = product.Stock
+            });
+        }
+        Snackbar.Add($"{product.PName} added to cart!", Severity.Success);
+    }
+}

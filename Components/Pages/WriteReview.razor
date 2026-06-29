@@ -1,0 +1,152 @@
+﻿@page "/review/{ProductId:int}"
+@layout Layout.UserLayout
+@inject ReviewService ReviewService
+@inject ProductService ProductService
+@inject AppAuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@rendermode InteractiveServer
+
+
+<PageTitle>Write Review — ShopBlazor</PageTitle>
+
+@if (_product == null)
+{
+    <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" />
+}
+else
+{
+    <MudGrid Justify="Justify.Center">
+        <MudItem xs="12" sm="10" md="6">
+            <MudCard Elevation="3" Style="border-radius:16px">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e">
+                            Review: @_product.PName
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="color:#a07850">
+                            Share your experience with this product
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent>
+                    <MudForm @ref="_form" @bind-IsValid="_isValid">
+                        <div style="display:flex; flex-direction:column; gap:1.2rem">
+
+                            <div>
+                                <MudText Typo="Typo.body2"
+                                         Style="color:#5c3d2e; font-weight:500; margin-bottom:8px">
+                                    Your rating
+                                </MudText>
+                                <MudRating @bind-SelectedValue="_rating"
+                                           MaxValue="5"
+                                           Size="Size.Large"
+                                           Style="color:#c8956c" />
+                                @if (_rating == 0)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Error">
+                                        Please select a rating
+                                    </MudText>
+                                }
+                            </div>
+
+                            <MudTextField T="string"
+                                          Label="Your comment"
+                                          @bind-Value="_comment"
+                                          Required="true"
+                                          RequiredError="Comment is required"
+                                          Variant="Variant.Outlined"
+                                          Lines="4"
+                                          Placeholder="Tell others what you think about this product..." />
+                        </div>
+                    </MudForm>
+                </MudCardContent>
+
+                <MudCardActions Class="px-4 pb-4 gap-2 flex-column">
+                    <MudButton FullWidth="true"
+                               Variant="Variant.Filled"
+                               Style="background:#8b5e3c; color:white; border-radius:10px; text-transform:none"
+                               Disabled="_loading"
+                               OnClick="SubmitReview">
+                        @if (_loading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Submitting...</span>
+                        }
+                        else
+                        {
+                            <span>Submit review</span>
+                        }
+                    </MudButton>
+
+                    <MudButton FullWidth="true"
+                               Variant="Variant.Text"
+                               Style="color:#a07850; text-transform:none"
+                               OnClick='() => Nav.NavigateTo($"/product/{ProductId}")'>
+                        Cancel
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int ProductId { get; set; }
+
+    Product? _product;
+    MudForm _form = null!;
+    string _comment = "";
+    int _rating = 0;
+    bool _isValid;
+    bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.Yield();
+        var result = ProductService.GetProductById(ProductId);
+        if (result.Success)
+            _product = result.Data;
+        else
+            Nav.NavigateTo("/catalog");
+    }
+
+    async Task SubmitReview()
+    {
+        await _form.Validate();
+        if (!_isValid || _rating == 0) return;
+
+        _loading = true;
+        await Task.Yield();
+
+        try
+        {
+            var result = ReviewService.AddReview(new AddReviewRequest
+            {
+                UId = Auth.UserId,
+                PId = ProductId,
+                Rating = _rating,
+                Comment = _comment
+            });
+
+            if (result.Success)
+            {
+                Snackbar.Add("Review submitted!", Severity.Success);
+                Nav.NavigateTo($"/product/{ProductId}");
+            }
+            else
+            {
+                Snackbar.Add(result.Message, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

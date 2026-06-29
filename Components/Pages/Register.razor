@@ -1,0 +1,140 @@
+﻿@page "/register"
+@rendermode InteractiveServer
+@layout Layout.MainLayout
+@inject AuthService AuthService
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Register — ShopBlazor</PageTitle>
+
+<div style="display:flex; min-height:100vh; align-items:center; justify-content:center; background:#fdf6f0">
+    <div style="display:flex; width:900px; min-height:580px; border-radius:20px; overflow:hidden; box-shadow:0 8px 40px rgba(139,90,43,0.15)">
+
+        @* LEFT — form *@
+        <div style="flex:1; background:#ffffff; padding:3rem 2.5rem; display:flex; flex-direction:column; justify-content:center; gap:1.1rem">
+
+            <div>
+                <MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e">Create account</MudText>
+                <MudText Typo="Typo.body2" Style="color:#a07850; margin-top:4px">Fill in your details to get started</MudText>
+            </div>
+
+            <MudForm @ref="_form" @bind-IsValid="_isValid">
+                <div style="display:flex; flex-direction:column; gap:0.9rem">
+                    <MudTextField T="string" Label="Full name" @bind-Value="_name"
+                                  Required="true" RequiredError="Name is required"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person"
+                                  Variant="Variant.Outlined" />
+
+                    <MudTextField T="string" Label="Email address" @bind-Value="_email"
+                                  InputType="InputType.Email"
+                                  Required="true" RequiredError="Email is required"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email"
+                                  Variant="Variant.Outlined" />
+
+                    <MudTextField T="string" Label="Phone number" @bind-Value="_phone"
+                                  Required="true" RequiredError="Phone is required"
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Phone"
+                                  Variant="Variant.Outlined" />
+
+                    <MudTextField T="string" Label="Password" @bind-Value="_password"
+                                  InputType="@_passwordType"
+                                  Required="true" RequiredError="Password is required"
+                                  Adornment="Adornment.End" AdornmentIcon="@_passwordIcon"
+                                  OnAdornmentClick="TogglePassword"
+                                  Variant="Variant.Outlined" />
+                </div>
+            </MudForm>
+
+            <MudButton FullWidth="true"
+                       Variant="Variant.Filled"
+                       Style="background:#8b5e3c; color:white; padding:12px; border-radius:10px; font-size:15px; font-weight:500; text-transform:none"
+                       Disabled="_loading"
+                       OnClick="HandleRegister">
+                @if (_loading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create account</span>
+                }
+            </MudButton>
+
+            <MudText Typo="Typo.body2" Align="Align.Center" Style="color:#a07850">
+                Already have an account?
+                <MudLink Href="/login" Style="color:#8b5e3c; font-weight:600">Sign in</MudLink>
+            </MudText>
+        </div>
+
+        @* RIGHT — illustration *@
+        <div style="width:340px; background:linear-gradient(160deg,#c8956c,#e8c9a0); display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding:2rem; position:relative; overflow:hidden">
+
+            <div style="position:absolute; width:250px; height:250px; border-radius:50%; background:rgba(255,255,255,0.15); top:-80px; right:-80px"></div>
+            <div style="position:absolute; width:180px; height:180px; border-radius:50%; background:rgba(255,255,255,0.1); bottom:-50px; left:-60px"></div>
+
+
+            <img src="/SWebShopping.png"
+                 style="width:100%; max-width:300px; height:500px;z-index:1; object-fit:contain" />
+        </div>
+
+    </div>
+</div>
+
+@code {
+    MudForm _form = null!;
+    string _name = "";
+    string _email = "";
+    string _phone = "";
+    string _password = "";
+    bool _isValid;
+    bool _loading;
+    InputType _passwordType = InputType.Password;
+    string _passwordIcon = Icons.Material.Filled.VisibilityOff;
+
+    void TogglePassword()
+    {
+        _passwordType = _passwordType == InputType.Password ? InputType.Text : InputType.Password;
+        _passwordIcon = _passwordType == InputType.Password
+            ? Icons.Material.Filled.VisibilityOff
+            : Icons.Material.Filled.Visibility;
+    }
+
+    async Task HandleRegister()
+    {
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _loading = true;
+        try
+        {
+            var result = AuthService.Register(new RegisterRequest
+            {
+                Name = _name,
+                Email = _email,
+                Phone = _phone,
+                Password = _password
+            });
+
+            Snackbar.Add("Account created! Please sign in.", Severity.Success);
+            Nav.NavigateTo("/login");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
+
+it show this error An unexpected error occured during registration
+
+Create account
+
+Fill in your details to get started
+
+Already have an account? [Sign in](https://localhost:7046/login)
+            v

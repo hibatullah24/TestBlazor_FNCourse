@@ -1,0 +1,158 @@
+﻿@page "/admin/orders"
+@rendermode InteractiveServer
+@layout Layout.AdminLayout
+@inject OrderService OrderService
+@inject UserService UserService
+@inject ISnackbar Snackbar
+
+<PageTitle>Manage Orders — Admin</PageTitle>
+
+<MudText Typo="Typo.h5" Style="font-weight:600; color:#5c3d2e; margin-bottom:1.5rem">
+    Manage Orders
+</MudText>
+
+@if (_loading)
+{
+    <div style="display:flex; justify-content:center; margin-top:4rem">
+        <MudProgressCircular Indeterminate="true" Style="color:#8b5e3c" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudTextField T="string"
+                  @bind-Value="_search"
+                  Placeholder="Search by order ID..."
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Immediate="true"
+                  Style="max-width:320px; margin-bottom:1rem" />
+
+    <MudDataGrid T="AdminOrderDto"
+                 Items="@FilteredOrders"
+                 SortMode="SortMode.Multiple"
+                 Hover="true"
+                 Striped="true"
+                 Bordered="true"
+                 Elevation="2"
+                 RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.OrderId" Title="Order ID" Sortable="true" />
+            <PropertyColumn Property="x => x.UserId" Title="User ID" Sortable="true" />
+            <PropertyColumn Property="x => x.UserName" Title="Customer" Sortable="true" />
+            <TemplateColumn Title="Date">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2">
+                        @context.Item.OrderDate.ToString("MMM dd, yyyy")
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Total">
+                <CellTemplate>
+                    <MudText Style="color:#8b5e3c; font-weight:600">
+                        $@context.Item.TotalAmount.ToString("0.00")
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Items">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2">
+                        @context.Item.Items.Count item(s)
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Details">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                   Size="Size.Small"
+                                   Style="color:#8b5e3c"
+                                   OnClick="() => ToggleOrder(context.Item.OrderId)" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="AdminOrderDto" />
+        </PagerContent>
+    </MudDataGrid>
+
+    @* Expanded order detail *@
+    @if (_selectedOrder != null)
+    {
+        <MudPaper Elevation="3" Style="margin-top:1.5rem; padding:1.5rem; border-radius:14px">
+            <MudText Typo="Typo.h6" Style="font-weight:600; color:#5c3d2e; margin-bottom:1rem">
+                Order #@_selectedOrder.OrderId — @_selectedOrder.UserName
+            </MudText>
+            @foreach (var item in _selectedOrder.Items)
+            {
+                <div style="display:flex; justify-content:space-between;
+                    padding:8px 0; border-bottom:1px solid #f0e6da">
+                    <div>
+                        <MudText Typo="Typo.body2" Style="font-weight:500; color:#5c3d2e">
+                            @item.ProductName
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color:#a07850">
+                            @item.Quantity × $@item.UnitPrice.ToString("0.00")
+                        </MudText>
+                    </div>
+                    <MudText Style="font-weight:700; color:#8b5e3c">
+                        $@item.Subtotal.ToString("0.00")
+                    </MudText>
+                </div>
+            }
+            <div style="display:flex; justify-content:flex-end; margin-top:12px">
+                <MudText Style="font-weight:700; font-size:18px; color:#8b5e3c">
+                    Total: $@_selectedOrder.TotalAmount.ToString("0.00")
+                </MudText>
+            </div>
+        </MudPaper>
+    }
+}
+
+@code {
+    List<AdminOrderDto> _allOrders = new();
+    AdminOrderDto? _selectedOrder;
+    bool _loading = true;
+    string _search = "";
+
+    IEnumerable<AdminOrderDto> FilteredOrders => string.IsNullOrWhiteSpace(_search)
+        ? _allOrders
+        : _allOrders.Where(o => o.OrderId.ToString().Contains(_search));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await Task.Yield();
+
+        var users = UserService.GetAllUsers();
+        if (users.Success)
+        {
+            foreach (var user in users.Data)
+            {
+                var orders = OrderService.GetUserOrders(user.UserId);
+                if (orders.Success)
+                {
+                    _allOrders.AddRange(orders.Data.Select(o => new AdminOrderDto
+                    {
+                        OrderId = o.OrderId,
+                        UserId = user.UserId,
+                        UserName = user.Name,
+                        OrderDate = o.OrderDate,
+                        TotalAmount = o.TotalAmount,
+                        Items = o.Items
+                    }));
+                }
+            }
+            _allOrders = _allOrders.OrderByDescending(o => o.OrderDate).ToList();
+        }
+
+        _loading = false;
+    }
+
+    void ToggleOrder(int orderId)
+    {
+        if (_selectedOrder?.OrderId == orderId)
+            _selectedOrder = null;
+        else
+            _selectedOrder = _allOrders.FirstOrDefault(o => o.OrderId == orderId);
+    }
+}
